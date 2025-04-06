@@ -1,0 +1,76 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Hide arrows in Webkit browsers (Chrome, Safari) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Hide arrows in Firefox */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+
+.container {
+  max-width: 600px;
+  margin: 20px auto;
+  padding: 20px;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+  gap: 10px;
+}
+
+.sku-display {
+  font-family: monospace;
+  padding: 8px;
+  background: #f0f0f0;
+  border-radius: 4px;
+  min-width: 110px;
+  display: inline-block;
+}
+
+.item-input {
+  flex: 1;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.remove-btn {
+  background: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 25px;
+  height: 25px;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+
+.remove-btn:disabled {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.add-btn {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.add-btn:hover {
+  background: #45a049;
+}
