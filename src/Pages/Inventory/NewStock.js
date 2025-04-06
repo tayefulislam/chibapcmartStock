@@ -1,10 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
+import axios from "axios";
 import React, { useState, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import { v4 as uuidv4 } from "uuid";
 
 const NewStock = () => {
   const { supplierId, itemId, stockOrderId } = useParams();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Function declarations first
   function generateSKU() {
@@ -20,15 +22,16 @@ const NewStock = () => {
     return `${randomLetter1}${randomNumbers1}${randomLetter2}${randomNumbers2}`;
   }
 
-  const createNewInput = (lastPrice = 0) => {
-    return {
-      id: uuidv4(),
-      skuId: generateSKU(),
-      value: "",
-      purchasePrice: lastPrice,
-      placeholder: "Enter item description",
-    };
-  };
+  const createNewInput = (lastEntry = null) => ({
+    id: uuidv4(),
+    skuId: generateSKU(),
+    description: lastEntry?.description || "",
+    ram: lastEntry?.ram || "",
+    storage: lastEntry?.storage || "",
+    storage2: lastEntry?.storage2 || "",
+    color: lastEntry?.color || "",
+    purchasePrice: lastEntry?.purchasePrice || 0,
+  });
 
   const [inputs, setInputs] = useState([createNewInput(0)]);
 
@@ -45,10 +48,10 @@ const NewStock = () => {
   );
 
   // Add new input
+
   const addInput = () => {
-    const lastPrice =
-      inputs.length > 0 ? inputs[inputs.length - 1].purchasePrice : 0;
-    setInputs([...inputs, createNewInput(lastPrice)]);
+    const lastInput = inputs[inputs.length - 1];
+    setInputs([...inputs, createNewInput(lastInput)]);
   };
 
   // Remove input
@@ -57,20 +60,38 @@ const NewStock = () => {
   };
 
   // Handle description change
-  const handleInputChange = (id, event) => {
+  // const handleInputChange = (id, event) => {
+  //   setInputs(
+  //     inputs.map((input) =>
+  //       input.id === id ? { ...input, value: event.target.value } : input
+  //     )
+  //   );
+  // };
+
+  // Handle general input changes
+  const handleInputChange = (id, field, value) => {
     setInputs(
       inputs.map((input) =>
-        input.id === id ? { ...input, value: event.target.value } : input
+        input.id === id ? { ...input, [field]: value } : input
       )
     );
   };
 
   // Handle price change
-  const handlePriceChange = (id, event) => {
-    const value = Math.max(0, Number(event.target.value));
+  // const handlePriceChange = (id, event) => {
+  //   const value = Math.max(0, Number(event.target.value));
+  //   setInputs(
+  //     inputs.map((input) =>
+  //       input.id === id ? { ...input, purchasePrice: value } : input
+  //     )
+  //   );
+  // };
+
+  const handlePriceChange = (id, value) => {
+    const numericValue = Math.max(0, Number(value));
     setInputs(
       inputs.map((input) =>
-        input.id === id ? { ...input, purchasePrice: value } : input
+        input.id === id ? { ...input, purchasePrice: numericValue } : input
       )
     );
   };
@@ -110,11 +131,32 @@ const NewStock = () => {
   // Handle form submission
   const handleSubmit = () => {
     const stockData = {
-      supplier: supplierDetails,
-      productDetails: item,
+      stockOrder: {
+        // supplier: supplierDetails,
+        // productDetails: item,
+
+        stockOrderId,
+        pId: item.productId,
+
+        sId: supplierDetails?.supplierId,
+        supplierId: supplierId,
+        productId: item?._id,
+
+        totalPurchasePrice,
+        stocks: inputs.map((input) => input.skuId),
+        // stocks: inputs.map((input) => ({
+        //   sku: input.skuId,
+        // })),
+      },
+
       entries: inputs.map((input) => ({
         sku: input.skuId,
-        description: input.value,
+        description: input.description,
+        ram: input.ram,
+        storage: input.storage,
+        storage2: input.storage2,
+        color: input.color,
+
         productId: item._id,
         supplierId: supplierDetails._id,
         stockOrderId,
@@ -135,15 +177,32 @@ const NewStock = () => {
 
         purchasePrice: input.purchasePrice,
       })),
-      stocks: inputs.map((input) => ({
-        sku: input.skuId,
-      })),
-      totals: {
-        totalEntries,
-        totalPurchasePrice,
-      },
+
+      // totals: {
+      //   totalEntries,
+      //   totalPurchasePrice,
+      // },
     };
-    console.log("Submission Data:", stockData);
+
+    console.log(stockData);
+
+    const url = `http://localhost:5000/api/v1/stockOrder/createNewStockOrder`;
+
+    axios.post(url, stockData).then(function (response) {
+      console.log(response);
+
+      if (response.status === 200) {
+        // navigate(`/requestDetails/${response.data._id}`);
+        // toast.success(`Your Request for successfully placed`);
+        // Reset form on success
+        setInputs([createNewInput(0)]);
+      }
+
+      if (response.status === 400) {
+        // toast.error(`Error: ${response.data.message}`);
+      }
+    });
+
     // Add your API submission logic here
   };
 
@@ -158,7 +217,7 @@ const NewStock = () => {
     );
 
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
+    <div className="">
       {/* Supplier & Item Header */}
       <h1 className="text-center text-2xl font-bold">
         New StockOrder #{stockOrderId}
@@ -177,38 +236,80 @@ const NewStock = () => {
       {/* Input Fields */}
       <div className="space-y-4">
         {inputs.map((input) => (
-          <div key={input.id} className="flex gap-3 items-center">
+          <div key={input.id} className="grid grid-cols-8 gap-4 items-center">
             {/* SKU Display */}
-            <span className="font-mono px-3 py-2 bg-gray-100 rounded w-32">
+            <span className="font-mono p-2 bg-gray-100 rounded col-span-1">
               {input.skuId}
             </span>
 
-            {/* Description Input */}
+            {/* Description */}
             <input
               type="text"
-              value={input.value}
-              onChange={(e) => handleInputChange(input.id, e)}
-              placeholder={input.placeholder}
-              className="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
+              value={input.description}
+              onChange={(e) =>
+                handleInputChange(input.id, "description", e.target.value)
+              }
+              placeholder="Description"
+              className="p-2 border rounded"
             />
 
-            {/* Price Input */}
-            <div className="relative w-32">
-              <span className="absolute left-3 top-2 text-gray-400">¥</span>
-              <input
-                type="number"
-                value={input.purchasePrice}
-                onChange={(e) => handlePriceChange(input.id, e)}
-                className="w-full pl-7 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400"
-                min="0"
-                step="0.01"
-              />
-            </div>
+            {/* RAM */}
+            <input
+              type="text"
+              value={input.ram}
+              onChange={(e) =>
+                handleInputChange(input.id, "ram", e.target.value)
+              }
+              placeholder="ram"
+              className="p-2 border rounded"
+            />
+
+            {/* Storage */}
+            <input
+              type="text"
+              value={input.storage}
+              onChange={(e) =>
+                handleInputChange(input.id, "storage", e.target.value)
+              }
+              placeholder="Storage"
+              className="p-2 border rounded"
+            />
+
+            <input
+              type="text"
+              value={input.storage2}
+              onChange={(e) =>
+                handleInputChange(input.id, "storage2", e.target.value)
+              }
+              placeholder="Storage 2( HDD ) "
+              className="p-2 border rounded"
+            />
+
+            {/* Color */}
+            <input
+              type="text"
+              value={input.color}
+              onChange={(e) =>
+                handleInputChange(input.id, "color", e.target.value)
+              }
+              placeholder="Color"
+              className="p-2 border rounded"
+            />
+
+            {/* Price */}
+            <input
+              type="number"
+              value={input.purchasePrice}
+              onChange={(e) => handlePriceChange(input.id, e.target.value)} // Pass value directly
+              className="pl-6 p-2 border rounded w-full"
+              min="0"
+              step="0.01"
+            />
 
             {/* Remove Button */}
             <button
               onClick={() => removeInput(input.id)}
-              className="px-3 py-1 bg-red-500 text-white rounded-full hover:bg-red-600 disabled:bg-gray-300"
+              className="p-2 bg-red-500 text-white rounded hover:bg-red-600"
               disabled={inputs.length === 1}
             >
               ×
